@@ -1,0 +1,13 @@
+{
+  "operation": "getLecturesForCourse",
+  "module": "lectures",
+  "courseCode": "CS301",
+  "success": true,
+  "duration": 183,
+  "retryCount": 0,
+  "validationState": "EMPTY_VALID",
+  "requestCount": 1,
+  "skippedCount": 0,
+  "memoryUsageMb": 85,
+  "timestamp": "2026-05-21T20:15:25.155Z"
+}

@@ -1,0 +1,13 @@
+{
+  "operation": "getGDBsForCourse",
+  "module": "gdb",
+  "courseCode": "CS301P",
+  "success": true,
+  "duration": 1993,
+  "retryCount": 0,
+  "validationState": "EMPTY_VALID",
+  "requestCount": 3,
+  "skippedCount": 0,
+  "memoryUsageMb": 263,
+  "timestamp": "2026-05-21T20:15:22.598Z"
+}

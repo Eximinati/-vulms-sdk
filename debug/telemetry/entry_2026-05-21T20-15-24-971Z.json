@@ -1,0 +1,12 @@
+{
+  "operation": "getAllLectures",
+  "module": "lectures",
+  "success": true,
+  "duration": 382,
+  "retryCount": 0,
+  "validationState": "EMPTY_VALID",
+  "requestCount": 1,
+  "skippedCount": 0,
+  "memoryUsageMb": 84,
+  "timestamp": "2026-05-21T20:15:24.971Z"
+}

@@ -1,0 +1,13 @@
+{
+  "operation": "getQuizzesForCourse",
+  "module": "quizzes",
+  "courseCode": "CS301",
+  "success": true,
+  "duration": 948,
+  "retryCount": 0,
+  "validationState": "VALID",
+  "requestCount": 3,
+  "skippedCount": 0,
+  "memoryUsageMb": 94,
+  "timestamp": "2026-05-21T20:15:10.016Z"
+}

@@ -1,0 +1,75 @@
+{
+  "name": "vulms-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Virtual University LMS (VULMS) — Playwright login, ASP.NET PostBack navigation, HTML parsing",
+  "keywords": [
+    "vulms",
+    "virtual-university",
+    "lms",
+    "scraper",
+    "playwright",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "dev:test": "tsx playground/test.ts",
+    "dev:login": "tsx playground/test-login.ts",
+    "dev:courses": "tsx playground/test-courses.ts",
+    "dev:assignments": "tsx playground/test-assignments.ts",
+    "dev:quizzes": "tsx playground/test-quizzes.ts",
+    "dev:gdb": "tsx playground/test-gdb.ts",
+    "dev:lectures": "tsx playground/test-lectures.ts",
+    "dev:activities": "tsx playground/test-activities.ts",
+    "dev:report": "tsx playground/test-report.ts",
+    "dev:per-course": "tsx playground/test-per-course.ts",
+    "dev:telemetry": "tsx playground/collect-telemetry.ts",
+    "dev:stress": "tsx playground/stress-test.ts",
+    "dev:memory": "tsx playground/memory-trace-validation.ts",
+    "dev:benchmark": "tsx playground/benchmark.ts",
+    "dev:release-gate": "tsx playground/release-gate.ts",
+    "dev:readiness": "tsx -e \"import { printBetaReadinessSummary } from './src/utils/beta-readiness'; printBetaReadinessSummary()\""
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "axios-cookiejar-support": "^5.0.0",
+    "cheerio": "^1.0.0",
+    "playwright": "^1.60.0",
+    "tough-cookie": "^4.1.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/tough-cookie": "^4.0.5",
+    "dotenv": "^17.4.2",
+    "tsup": "^8.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.5.0",
+    "vitest": "^1.6.0"
+  }
+}

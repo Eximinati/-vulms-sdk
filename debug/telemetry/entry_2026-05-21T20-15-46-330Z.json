@@ -1,0 +1,12 @@
+{
+  "operation": "getAllSmart",
+  "module": "activities",
+  "success": true,
+  "duration": 19281,
+  "retryCount": 0,
+  "validationState": "VALID",
+  "requestCount": 52,
+  "skippedCount": 0,
+  "memoryUsageMb": 78,
+  "timestamp": "2026-05-21T20:15:46.330Z"
+}

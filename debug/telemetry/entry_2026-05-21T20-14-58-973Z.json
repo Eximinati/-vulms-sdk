@@ -1,0 +1,12 @@
+{
+  "operation": "getAllAssignments",
+  "module": "assignments",
+  "success": true,
+  "duration": 6954,
+  "retryCount": 0,
+  "validationState": "VALID",
+  "requestCount": 17,
+  "skippedCount": 0,
+  "memoryUsageMb": 129,
+  "timestamp": "2026-05-21T20:14:58.973Z"
+}

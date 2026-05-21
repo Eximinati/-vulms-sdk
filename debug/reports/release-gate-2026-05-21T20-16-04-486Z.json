@@ -1,0 +1,109 @@
+{
+  "timestamp": "2026-05-21T20:16:04.487Z",
+  "gates": [
+    {
+      "name": "Consistency > 95%",
+      "passed": false,
+      "value": "33%",
+      "threshold": ">= 95%",
+      "critical": true
+    },
+    {
+      "name": "Failure Rate < 3%",
+      "passed": true,
+      "value": "0.0%",
+      "threshold": "< 3%",
+      "critical": true
+    },
+    {
+      "name": "Bounded Retries",
+      "passed": true,
+      "value": "0.00 per op",
+      "threshold": "< 0.5 per op",
+      "critical": true
+    },
+    {
+      "name": "Lecture Traversal Stability",
+      "passed": true,
+      "value": "100% (4 ops)",
+      "threshold": ">= 90%",
+      "critical": true
+    },
+    {
+      "name": "No Memory Growth",
+      "passed": true,
+      "value": "+55MB (93 -> 148)",
+      "threshold": "< 100MB growth",
+      "critical": true
+    },
+    {
+      "name": "No Critical Safety Issues",
+      "passed": true,
+      "value": "0 critical failures",
+      "threshold": "0",
+      "critical": true
+    }
+  ],
+  "passedGates": 5,
+  "totalGates": 6,
+  "criticalPassed": 5,
+  "criticalGates": 6,
+  "betaReady": false,
+  "telemetrySummary": {
+    "totalOperations": 20,
+    "successfulOperations": 20,
+    "failedOperations": 0,
+    "failureRate": 0,
+    "avgDuration": 4035.05,
+    "durationVariance": 34527869.1475,
+    "totalRetries": 0,
+    "retryRate": 0,
+    "emptyValidCount": 7,
+    "invalidCount": 0,
+    "validationStateDistribution": {
+      "VALID": 13,
+      "EMPTY_VALID": 7
+    },
+    "failureTypeDistribution": {},
+    "moduleSuccessRates": {
+      "auth": {
+        "total": 1,
+        "success": 1,
+        "rate": 1
+      },
+      "courses": {
+        "total": 1,
+        "success": 1,
+        "rate": 1
+      },
+      "assignments": {
+        "total": 4,
+        "success": 4,
+        "rate": 1
+      },
+      "quizzes": {
+        "total": 4,
+        "success": 4,
+        "rate": 1
+      },
+      "gdb": {
+        "total": 4,
+        "success": 4,
+        "rate": 1
+      },
+      "lectures": {
+        "total": 4,
+        "success": 4,
+        "rate": 1
+      },
+      "activities": {
+        "total": 2,
+        "success": 2,
+        "rate": 1
+      }
+    },
+    "consistencyScore": 33,
+    "stabilityScore": 91,
+    "productionReadinessPercent": 100
+  }
+}

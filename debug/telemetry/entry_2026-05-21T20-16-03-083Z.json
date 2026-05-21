@@ -1,0 +1,12 @@
+{
+  "operation": "getAllLegacy",
+  "module": "activities",
+  "success": true,
+  "duration": 16751,
+  "retryCount": 0,
+  "validationState": "VALID",
+  "requestCount": 52,
+  "skippedCount": 0,
+  "memoryUsageMb": 273,
+  "timestamp": "2026-05-21T20:16:03.083Z"
+}

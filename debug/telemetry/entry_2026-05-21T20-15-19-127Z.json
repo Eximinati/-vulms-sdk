@@ -1,0 +1,12 @@
+{
+  "operation": "getAllGDBs",
+  "module": "gdb",
+  "success": true,
+  "duration": 5520,
+  "retryCount": 0,
+  "validationState": "VALID",
+  "requestCount": 17,
+  "skippedCount": 0,
+  "memoryUsageMb": 239,
+  "timestamp": "2026-05-21T20:15:19.127Z"
+}

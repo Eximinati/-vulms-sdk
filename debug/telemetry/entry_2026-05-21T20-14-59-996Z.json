@@ -1,0 +1,13 @@
+{
+  "operation": "getAssignmentsForCourse",
+  "module": "assignments",
+  "courseCode": "CS301",
+  "success": true,
+  "duration": 1023,
+  "retryCount": 0,
+  "validationState": "EMPTY_VALID",
+  "requestCount": 2,
+  "skippedCount": 0,
+  "memoryUsageMb": 149,
+  "timestamp": "2026-05-21T20:14:59.996Z"
+}

@@ -1,0 +1,12 @@
+{
+  "operation": "getAllQuizzes",
+  "module": "quizzes",
+  "success": true,
+  "duration": 6194,
+  "retryCount": 0,
+  "validationState": "VALID",
+  "requestCount": 17,
+  "skippedCount": 0,
+  "memoryUsageMb": 282,
+  "timestamp": "2026-05-21T20:15:09.068Z"
+}
