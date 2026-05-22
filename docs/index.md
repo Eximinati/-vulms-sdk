@@ -11,7 +11,7 @@ npm install vulms-sdk
 ## Quick Start
 
 ```typescript
-import { VulmsSDK } from '@vulms/sdk';
+import { VulmsSDK } from 'vulms-sdk';
 
 const sdk = new VulmsSDK();
 const result = await sdk.loginWithBrowser('BC000000000', 'password');
