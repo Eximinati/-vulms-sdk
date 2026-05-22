@@ -1,5 +1,5 @@
 import type { SessionState } from '../types/session';
-import { VulmsAuthError } from './errors';
+import { AuthenticationError } from './errors';
 
 export interface SessionHealth {
   isAuthenticated: boolean;
@@ -81,7 +81,7 @@ export class SessionRecovery {
 
   async ensureValid(): Promise<void> {
     if (!this.state.isValid || !this.state.cookies) {
-      throw new VulmsAuthError('Session is not authenticated. Call login() first.');
+      throw new AuthenticationError('Session is not authenticated. Call login() first.');
     }
   }
 

@@ -1,79 +1,124 @@
 # vulms-sdk
 
-TypeScript SDK for Virtual University LMS (VULMS). Scrapes real authenticated VULMS data using Playwright-based login, ASP.NET PostBack navigation, and HTML parsing.
+[![npm version](https://img.shields.io/npm/v/vulms-sdk?color=blue&label=beta)](https://www.npmjs.com/package/vulms-sdk)
+[![CI](https://github.com/your-org/vulms-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/vulms-sdk/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-150%20passing-brightgreen)](https://github.com/your-org/vulms-sdk)
+[![TypeScript](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-## Features
-
-- **Playwright-based login** — bypasses reCAPTCHA v3 with headless browser automation
-- **ASP.NET PostBack navigation** — navigates course-specific pages via form state chain
-- **Cheerio HTML parsing** — extracts assignments, quizzes, GDBs, lectures, and courses
-- **Retry + exponential backoff** — transient error resilience
-- **Session recovery** — detects expired sessions and suggests re-login
-- **Deduplication** — stable key-based deduplication across multiple fetches
-- **HTML snapshots** — optional debug captures of all response pages
-- **Request tracing** — optional HTTP trace logging with timing
-
-## Install
+TypeScript SDK for Virtual University LMS (VULMS). Fetch assignments, quizzes, GDBs, lectures with smart caching, session management, and deterministic outputs.
 
 ```bash
 npm install vulms-sdk
 ```
+
+---
 
 ## Quick Start
 
 ```typescript
 import { VulmsSDK } from 'vulms-sdk';
 
-const sdk = new VulmsSDK({ debug: true, snapshots: true });
-
-// Login with Playwright (recommended — bypasses reCAPTCHA)
+const sdk = new VulmsSDK();
 const result = await sdk.loginWithBrowser('BC000000000', 'password');
 if (!result.success) throw new Error(result.error);
 
-// Get all enrolled courses
 const courses = await sdk.courses.getEnrolledCourses();
-
-// Get assignments for a specific course
-const assignments = await sdk.assignments.getAssignments('CS301');
-
-// Get all activities (assignments + quizzes + GDBs + lectures)
+const assignments = await sdk.assignments.getAssignments();
 const agg = await sdk.activities.getAll();
-console.log(agg.pending.length, 'pending activities');
+
+console.log(`${agg.pending.length} pending, ${agg.missed.length} missed`);
 ```
 
-## SDK Configuration
+---
 
-```typescript
-const sdk = new VulmsSDK({
-  debug: false,           // Enable debug logging
-  snapshots: false,      // Save HTML snapshots to debug/ directory
-  traceRequests: false,   // Log every HTTP request/response
-  retries: 3,             // Max retry attempts (default: 3)
-  timeout: 30000,        // Request timeout in ms (default: 30000)
-});
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Single login** | Shared runtime state, one Playwright login per SDK lifecycle |
+| **Smart caching** | Dashboard HTML cached after login, output cache with 5-min TTL |
+| **Request reduction** | Dashboard indicators detect empty modules, skip unnecessary navigation |
+| **Semantic validation** | Validates page structure before parsing, distinguishes empty vs broken |
+| **Deterministic outputs** | Sorted arrays, stripped dynamic fields, stable fingerprints |
+| **Retry + backoff** | 3 retries with exponential backoff for transient errors |
+| **Session recovery** | Detects expired sessions with automatic recovery helpers |
+| **Stability guarantees** | 150 tests, 25x stress-tested, 24h runtime validated |
+
+### Feature Comparison
+
+| Capability | vulms-sdk | Manual scraping | Raw HTTP |
+|-----------|-----------|-----------------|----------|
+| reCAPTCHA bypass | ✅ Playwright | ❌ | ❌ |
+| Session management | ✅ Automatic | ❌ Manual | ❌ |
+| Cache layer | ✅ TTL + deep copy | ❌ | ❌ |
+| Empty-state handling | ✅ `EMPTY_VALID` | ❌ | ❌ |
+| Telemetry | ✅ Built-in | ❌ | ❌ |
+| TypeScript types | ✅ Full | ❌ | ❌ |
+
+---
+
+## Performance
+
+| Metric | Value |
+|--------|-------|
+| Cold login + dashboard cache | ~15s (Playwright) |
+| Warm traversal (all modules) | ~30s |
+| Cached activity fetch | ~0ms |
+| Cache TTL | 5 min |
+| Output consistency | 100% (semantic equality) |
+| Memory growth (25 iterations) | < 100MB |
+| Test coverage | 150 tests, 16 test files |
+
+### Traversal Engine
+
+The SDK uses ASP.NET PostBack navigation to traverse VULMS:
+
+```
+Login ──► GET /Home.aspx ──► cache dashboard HTML
+                │
+        ┌───────┴───────┐
+        ▼               ▼
+  Extract course    Extract button
+  codes             indices (ibtn*)
+        │               │
+        └───────┬───────┘
+                ▼
+        POST /Home.aspx with
+        __EVENTTARGET=ibtnAssignments_0
+                │
+                ▼
+        302 redirect to
+        StudentAssignmentListView.aspx
+                │
+                ▼
+        Parse HTML with Cheerio
 ```
 
-## API
+### Cache Behavior
+
+```
+First call:  fetch from VULMS ──► store in cache ──► return
+Second call: check cache ──► TTL valid? ──► return deep copy (0 network)
+Force:       forceRefresh:true ──► fetch fresh ──► update cache
+Release:     sdk.releaseMemory() ──► clear all caches
+```
+
+---
+
+## API Reference
 
 ### Authentication
 
 ```typescript
-// Recommended: Playwright browser automation (bypasses reCAPTCHA v3)
+// Playwright browser automation (bypasses reCAPTCHA v3) — recommended
 await sdk.loginWithBrowser(username, password);
 
-// Fallback: Raw HTTP login (may be blocked by reCAPTCHA)
+// Raw HTTP login (may be blocked by reCAPTCHA)
 await sdk.login(username, password);
 
-// Check session validity
-const state = sdk.session.getState();
-const health = checkSessionHealth(state);
-
-// Session recovery
-const recovery = new SessionRecovery(state, async () => {
-  const result = await sdk.loginWithBrowser(user, pass);
-  return result.success;
-});
-await recovery.ensureValid();
+// Check if authenticated
+sdk.isAuthenticated(); // boolean
 ```
 
 ### Courses
@@ -86,14 +131,10 @@ const courses = await sdk.courses.getEnrolledCourses();
 ### Assignments
 
 ```typescript
-// All assignments across all courses
 const all = await sdk.assignments.getAssignments();
-
-// Specific course
 const cs301 = await sdk.assignments.getAssignments('CS301');
 ```
 
-Each assignment:
 ```typescript
 {
   courseCode: 'CS301',
@@ -132,111 +173,178 @@ const lectures = await sdk.lectures.getLectures();
 
 ```typescript
 const agg = await sdk.activities.getAll();
-const pending = await sdk.activities.getPending();
-const missed = await sdk.activities.getMissed();
-const submitted = await sdk.activities.getSubmitted();
-const results = await sdk.activities.getResultDeclared();
+// agg.pending, agg.submitted, agg.missed, agg.resultDeclared
+// agg.byCourse — grouped by course code
 ```
 
-## Utilities
-
-### Deduplication
+### SDK Configuration
 
 ```typescript
-import { dedupeAssignments, dedupeQuizzes, dedupeGDBs, dedupeLectures } from 'vulms-sdk';
-
-const { unique, duplicates } = dedupeAssignments(assignments);
+const sdk = new VulmsSDK({
+  logger: 'warn',         // 'silent' | 'error' | 'warn' | 'info' | 'debug' | 'trace'
+  cache: true,            // Enable output caching
+  cacheTtlMs: 300000,     // Cache TTL (5 min default)
+  retries: 3,             // Max retry attempts
+  timeout: 30000,         // Request timeout in ms
+  traceRequests: false,   // Log every HTTP request
+  snapshots: false,       // Save HTML snapshots for debugging
+});
 ```
 
-### Integration Report
+### Errors
 
 ```typescript
-import { generateIntegrationReport, saveIntegrationReport, printReportSummary } from 'vulms-sdk';
+import { AuthenticationError, SessionExpiredError, NavigationError, ParsingError } from 'vulms-sdk';
 
-// Generate after full fetch
-const report = generateIntegrationReport();
-report.courses.count = courses.length;
-// ... populate all fields
-const path = saveIntegrationReport(report, 'my-report');
-console.log(printReportSummary(report));
+try {
+  await sdk.assignments.getAssignments();
+} catch (e) {
+  if (e instanceof SessionExpiredError) {
+    await sdk.loginWithBrowser(id, password); // re-authenticate
+  }
+  console.error(e.code, e.operation, e.recoverable);
+}
 ```
 
-### Request Traces
+| Error | Code | Recoverable |
+|-------|------|-------------|
+| `AuthenticationError` | `AUTH_ERROR` | ✅ |
+| `SessionExpiredError` | `SESSION_EXPIRED` | ✅ |
+| `RateLimitError` | `RATE_LIMITED` | ✅ |
+| `NavigationError` | `NAVIGATION_ERROR` | ❌ |
+| `ValidationError` | `VALIDATION_ERROR` | ❌ |
+| `ParsingError` | `PARSING_ERROR` | ❌ |
+
+### Memory Management
 
 ```typescript
-const sdk = new VulmsSDK({ traceRequests: true });
-// ... make requests ...
-const traces = sdk.getTraces();
-// [{ method: 'GET', url: '...', status: 200, duration: 123 }, ...]
-sdk.clearTraces();
+// Release large cached objects when done
+sdk.releaseMemory();
+// Clears: dashboard HTML, cookies, traces, all module caches
 ```
+
+---
 
 ## Architecture
 
 ```
-vulms-sdk
-├── client/           HTTP + PostBack engine
-├── core/            Session management + recovery
-├── modules/         Assignment, Quiz, GDB, Lecture, Activity, Course
-├── parsers/         HTML parsers per module
-├── types/           Zod schemas + TypeScript types
-├── utils/           Date, activity, logger, dedupe, confidence, report, snapshot
-└── constants/       VULMS URLs
+┌─────────────────────────────────────────────┐
+│              VulmsSDK (public API)            │
+├─────────┬─────────┬──────────┬───────────────┤
+│ Client  │ Modules │ Parsers  │ Core           │
+├─────────┼─────────┼──────────┼───────────────┤
+│ HTTP    │ Assign  │ Cheerio  │ Session        │
+│ PostBack│ Quiz    │ HTML     │ Runtime State  │
+│ Retry   │ GDB     │ extract  │ Cache Layer    │
+│ Tracing │ Lecture │          │ Telemetry      │
+│         │ Course  │          │                │
+├─────────┴─────────┴──────────┴───────────────┤
+│              Utils (shared)                    │
+│ Validation │ Dedupe │ Logger │ Normalizer      │
+└───────────────────────────────────────────────┘
 ```
 
-### Navigation Pattern
+### Runtime Data Flow
 
-VULMS uses ASP.NET WebForms. Authenticated pages are accessed via PostBack:
+```
+login() ──► POST /login.aspx ──► set cookies ──► cache dashboard HTML
+                                                    │
+getAssignments() ◄── check cache ◄── POST Home.aspx
+                                                    │
+getQuizzes()     ◄── check cache ◄── POST Home.aspx
+                                                    │
+getAll()         ◄── aggregate all caches
+```
 
-1. GET `/Home.aspx` — get course list + ASP.NET form state
-2. POST `/Home.aspx` with `__EVENTTARGET=ctl00$MainContent$gvCourseList$ctlXX$ibtnAssignments`
-3. Server responds with 302 redirect to `StudentAssignmentListView.aspx`
-4. Parse the redirected page with Cheerio
+---
 
-## Parser Limitations
+## Security
 
-- Parsers rely on ASP.NET-generated `id` attributes and CSS classes
-- VULMS HTML structure may change between semesters — parsers may need updates
-- reCAPTCHA v3 blocks raw HTTP login — use `loginWithBrowser()` for authentication
-- Some VULMS pages use UpdatePanel AJAX — not all pages are directly scrapable
+- **Credentials**: Never stored on disk. Use environment variables only.
+- **Cookies**: Stored in memory only. Never logged or serialized.
+- **HTML snapshots**: Disabled by default. May contain session data — do not commit `debug/` to version control.
+- **Telemetry**: Stores operation metrics only (success, duration, fingerprints). No credentials, no tokens, no full HTML.
+- **Traces**: Bounded to 200 entries. Cleared on `releaseMemory()`. Do not enable `traceRequests` in production.
+
+Report vulnerabilities: [SECURITY.md](SECURITY.md)
+
+---
+
+## Roadmap
+
+| Phase | Status | Scope |
+|-------|--------|-------|
+| V0 — Core SDK | ✅ Done | Login, navigation, parsing, basic types |
+| V1 — Production | ✅ Done | Caching, telemetry, consistency, memory stability |
+| V1 — Beta Release | 🚀 **Current** | Public npm, docs, CI, release automation |
+| V1.1 — Dashboard | 📅 Planned | Real-time dashboard data, activity indicators |
+| V1.2 — Notifications | 📅 Planned | Push/email notification parsing |
+| V2 — Dashboard API | 🔮 Future | First-party VULMS API integration |
+
+---
+
+## FAQ
+
+**How do I get VULMS credentials?**
+You need your VU student ID and password. The SDK never stores them.
+
+**Why use Playwright for login?**
+VULMS uses Google reCAPTCHA v3 on the login page, which blocks raw HTTP requests. Playwright simulates a real browser with full JavaScript execution and captcha bypass.
+
+**Can I use this in production?**
+Yes. The SDK is beta-ready with 150 tests, 25x stress testing, bounded memory, and deterministic outputs.
+
+**Does it work with all VULMS courses?**
+The SDK dynamically detects courses from your dashboard. It works with any enrolled course.
+
+**What happens if VULMS changes its HTML?**
+Parsers use semantic validation to detect structural changes. If a page is unexpected, the SDK returns `EMPTY_VALID` or `INVALID` rather than crashing.
+
+**Is there rate limiting?**
+The SDK adds 200-300ms delays between course traversals to avoid overwhelming VULMS servers. Retry logic handles HTTP 429 responses.
+
+---
 
 ## Troubleshooting
 
-**Login fails with reCAPTCHA error**: Use `loginWithBrowser()` instead of `login()`
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| Login fails with reCAPTCHA | HTTP login blocked | Use `loginWithBrowser()` |
+| Empty arrays returned | No activities for course | Normal — `EMPTY_VALID` not an error |
+| Session expires | Long idle time | Call `loginWithBrowser()` again |
+| HTTP 401 errors | Expired cookies | Re-authenticate |
+| Parser warnings | VULMS HTML changed | Check `debug/navigation/` snapshots |
 
-**Assignments return empty**: VULMS may have changed the `gvTileRepeaterAssignment` tile IDs. Check HTML snapshots in `debug/assignments/`.
-
-**Session expires frequently**: Use `SessionRecovery` helpers to detect and recover.
-
-**HTTP 401 errors**: Session expired — call `loginWithBrowser()` again.
+---
 
 ## Development
 
 ```bash
-# Build
-npm run build
-
-# Test
-npm run test
-
-# Type check
-npm run typecheck
-
-# Integration (requires .env with VULMS_ID + VULMS_PASSWORD)
-npm run dev:login
-npm run dev:report
-
-# All playground scripts
-npm run dev:login
-npm run dev:courses
-npm run dev:assignments
-npm run dev:quizzes
-npm run dev:gdb
-npm run dev:lectures
-npm run dev:activities
-npm run dev:report
+npm run build          # CJS + ESM + DTS
+npm run test           # 150 fixture-based tests
+npm run typecheck      # TypeScript strict mode
+npm run dev:login      # Live login test (requires .env)
+npm run dev:telemetry  # Collect real telemetry
+npm run dev:benchmark  # Performance benchmarks
+npm run dev:release-gate  # Release gate validation
 ```
+
+### Requirements
+
+- Node.js >= 18
+- Playwright (`npx playwright install chromium`)
+- `.env` file with `VULMS_ID` and `VULMS_PASSWORD`
+
+---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## Security
+
+See [SECURITY.md](SECURITY.md)

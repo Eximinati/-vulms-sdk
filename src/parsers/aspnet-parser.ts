@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { AspNetWebFormData } from '../types/session';
-import { VulmsParsingError } from '../core/errors';
+import { ParsingError } from '../core/errors';
 import { ASPNET_SELECTORS, ROOT_FORM_SELECTORS } from '../constants/selectors';
 
 export function extractAspNetFormData(html: string): AspNetWebFormData {
@@ -32,7 +32,7 @@ export function extractAspNetFormData(html: string): AspNetWebFormData {
     };
   }
 
-  throw new VulmsParsingError(
+  throw new ParsingError(
     'Failed to extract form data: no __VIEWSTATE or __EVENTVALIDATION found. Page may be a redirect/captcha.',
   );
 }
@@ -54,7 +54,7 @@ export function extractRootFormData(html: string): {
   const viewstateGenerator = $(ROOT_FORM_SELECTORS.VIEWSTATEGENERATOR).val();
 
   if (typeof viewstate !== 'string' || typeof eventValidation !== 'string') {
-    throw new VulmsParsingError('Failed to extract root form data: missing hidden fields');
+    throw new ParsingError('Failed to extract root form data: missing hidden fields');
   }
 
   const formAction = $('form').attr('action') || './';

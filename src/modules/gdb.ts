@@ -5,6 +5,8 @@ import { SessionManager } from '../core/session';
 import type { GDB } from '../types/gdb';
 import { parseGDBs } from '../parsers/gdb-parser';
 import { noopLogger, type Logger } from '../utils/logger';
+import type { RuntimeState } from '../core/runtime-state';
+import { getCache, setCache } from '../core/runtime-state';
 
 export interface GDBSummary {
   total: number;
@@ -38,12 +40,14 @@ export interface GDBTraversalReport {
 export class GDBModule {
   private session: SessionManager;
   private debug!: Logger;
+  private runtime: RuntimeState;
   private navDir: string;
   private traversalSteps: GDBTraversalStep[] = [];
 
-  constructor(session: SessionManager, debug: Logger = noopLogger) {
+  constructor(session: SessionManager, debug: Logger = noopLogger, runtime?: RuntimeState) {
     this.session = session;
     this.debug = debug.child('gdb');
+    this.runtime = runtime ?? { loggedIn: false, cache: {}, telemetry: { cacheHits: 0, cacheMisses: 0, skippedTraversals: 0, requestsSaved: 0 }, createdAt: Date.now() };
     this.navDir = path.join(process.cwd(), 'debug', 'navigation', 'gdb');
     if (!fs.existsSync(this.navDir)) fs.mkdirSync(this.navDir, { recursive: true });
   }
@@ -98,7 +102,7 @@ export class GDBModule {
       } else if (step.error) {
         summary[step.courseCode] = `NAVIGATION FAILED (${step.error})`;
       } else {
-        summary[step.courseCode] = 'EMPTY';
+        summary[step.courseCode] = 'No GDBs available';
       }
     }
     return summary;
@@ -135,25 +139,48 @@ export class GDBModule {
     this.debug.info(`[PARSE] course=${courseCode} gdbsFound=${gdbs.length}`);
 
     if (gdbs.length === 0) {
-      this.debug.warn(`[EMPTY] course=${courseCode} reason=no GDBs extracted`);
+      this.debug.debug(`[EMPTY GDB PAGE] course=${courseCode} reason=no GDBs available`);
     }
 
     return gdbs;
   }
 
-  private async getAllGDBs(): Promise<GDB[]> {
+  private async getAllGDBs(forceRefresh: boolean = false): Promise<GDB[]> {
+    const cached = getCache<GDB[]>(this.runtime, 'gdbs');
+    if (cached && !forceRefresh) {
+      this.debug.debug('[CACHE HIT] gdbs');
+      return cached;
+    }
+
+    this.debug.debug('[CACHE MISS] gdbs');
     this.traversalSteps = [];
     const http = this.session.getHttpClient();
     const pbe = this.session.getPostBackEngine();
 
-    const homeHtml = await http.get({ path: '/Home.aspx' });
+    const homeHtml = this.runtime.dashboardHtml
+      ? this.runtime.dashboardHtml
+      : await http.get({ path: '/Home.aspx' });
     const courseIndices = this.findAllCourseIndices(homeHtml);
     this.debug.info(`[COURSES] Found ${courseIndices.length} courses: ${courseIndices.map(([, c]) => c).join(', ')}`);
 
     const allGDBs: GDB[] = [];
     const seen = new Set<string>();
+    const indicators = this.runtime.dashboardIndicators;
 
     for (const [index, code] of courseIndices) {
+      if (indicators && !indicators.gdbs.has(code)) {
+        this.debug.debug(`[SKIPPED TRAVERSAL] ${code} gdb (no dashboard indicator)`);
+        this.runtime.telemetry.skippedTraversals++;
+        this.runtime.telemetry.requestsSaved++;
+        this.traversalSteps.push({
+          courseCode: code,
+          success: true,
+          htmlLength: 0,
+          gdbsFound: 0,
+        });
+        continue;
+      }
+
       this.debug.info(`[COURSE] ${code}`);
 
       pbe.clearState();
@@ -180,7 +207,7 @@ export class GDBModule {
         this.debug.info(`[PARSE] course=${code} gdbsFound=${gdbs.length}`);
 
         if (gdbs.length === 0) {
-          this.debug.warn(`[EMPTY] course=${code} reason=no GDBs extracted`);
+          this.debug.debug(`[EMPTY GDB PAGE] course=${code} reason=no GDBs available`);
         }
 
         for (const g of gdbs) {
@@ -209,6 +236,7 @@ export class GDBModule {
 
     this.printTraversalSummary();
     this.debug.info(`[TOTAL] ${allGDBs.length} GDBs from ${courseIndices.length} courses`);
+    setCache(this.runtime, 'gdbs', allGDBs);
     return allGDBs;
   }
 

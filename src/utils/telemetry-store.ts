@@ -17,6 +17,7 @@ export interface TelemetryEntry {
   eventValidationSize?: number;
   redirectCount: number;
   memoryUsageMb?: number;
+  outputFingerprint?: string;
 }
 
 export interface TelemetrySession {
@@ -49,9 +50,11 @@ export class TelemetryStore {
   private baseDir: string;
   private currentSession: TelemetrySession | null = null;
   private sessionEntries: TelemetryEntry[] = [];
+  private maxInMemoryEntries: number;
 
-  constructor(baseDir: string = 'debug/telemetry') {
+  constructor(baseDir: string = 'debug/telemetry', maxInMemoryEntries: number = 200) {
     this.baseDir = baseDir;
+    this.maxInMemoryEntries = maxInMemoryEntries;
     this.ensureDirectory();
   }
 
@@ -82,6 +85,11 @@ export class TelemetryStore {
       this.currentSession.entries.push(fullEntry);
     }
     this.sessionEntries.push(fullEntry);
+
+    if (this.sessionEntries.length > this.maxInMemoryEntries) {
+      this.sessionEntries = this.sessionEntries.slice(-this.maxInMemoryEntries);
+    }
+
     this.saveEntry(fullEntry);
   }
 
@@ -220,23 +228,43 @@ export class TelemetryStore {
   }
 
   private computeConsistencyScore(entries: TelemetryEntry[]): number {
+    const buildKey = (e: TelemetryEntry): string => {
+      if (e.courseCode) return `${e.operation}:${e.courseCode}`;
+      return e.operation;
+    };
+
     const byOp = new Map<string, TelemetryEntry[]>();
     for (const e of entries) {
-      if (!byOp.has(e.operation)) byOp.set(e.operation, []);
-      byOp.get(e.operation)!.push(e);
+      const key = buildKey(e);
+      if (!byOp.has(key)) byOp.set(key, []);
+      byOp.get(key)!.push(e);
     }
 
-    let consistentOps = 0;
-    let totalOps = byOp.size;
+    let totalComparisons = 0;
+    let consistentComparisons = 0;
 
     for (const [, opEntries] of byOp) {
       if (opEntries.length < 2) continue;
-      const successes = opEntries.filter(e => e.success);
-      const rate = successes.length / opEntries.length;
-      if (rate === 1 || rate === 0) consistentOps++;
+
+      const withFingerprints = opEntries.filter(e => e.outputFingerprint != null);
+      if (withFingerprints.length < 2) {
+        if (opEntries.every(e => e.success === opEntries[0].success)) {
+          totalComparisons++;
+          consistentComparisons++;
+        } else {
+          totalComparisons++;
+        }
+        continue;
+      }
+
+      const fingerprints = new Set(withFingerprints.map(e => e.outputFingerprint!));
+      totalComparisons++;
+      if (fingerprints.size === 1) {
+        consistentComparisons++;
+      }
     }
 
-    return totalOps > 0 ? Math.round((consistentOps / totalOps) * 100) : 0;
+    return totalComparisons > 0 ? Math.round((consistentComparisons / totalComparisons) * 100) : 0;
   }
 
   private computeStabilityScore(successful: number, total: number, variance: number): number {

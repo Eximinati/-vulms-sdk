@@ -73,12 +73,75 @@ function analyzeSemantic(html: string, pageType: 'lecture' | 'quiz' | 'assignmen
     };
   }
 
+  if (isPageContainerPresent(html, pageType)) {
+    indicators.push('page_container:present');
+    return {
+      state: 'EMPTY_VALID',
+      pageType,
+      indicators,
+      missingExpected: 'no ' + pageType + 's available',
+    };
+  }
+
   return {
     state: 'INVALID',
     pageType: 'unknown',
     indicators,
     missingExpected: 'no ' + pageType + ' content structure found',
   };
+}
+
+function isPageContainerPresent(html: string, pageType: 'lecture' | 'quiz' | 'assignment' | 'gdb'): boolean {
+  const pageTitle = extractPageTitle(html).toLowerCase();
+
+  const containerChecks: Record<string, { titleMatch: string[]; containerSelectors: string[] }> = {
+    assignment: {
+      titleMatch: ['assignment'],
+      containerSelectors: [
+        '#MainContent_divRecord',
+        '#MainContent_pnlAssignment',
+        '#MainContent_gvAssignment',
+      ],
+    },
+    quiz: {
+      titleMatch: ['quiz'],
+      containerSelectors: [
+        '#MainContent_pnlQuiz',
+        '#MainContent_gvQuiz',
+        '#MainContent_divQuiz',
+      ],
+    },
+    lecture: {
+      titleMatch: ['lecture'],
+      containerSelectors: [
+        '#MainContent_pnlLecture',
+        '#MainContent_gvLecture',
+        '#MainContent_divLecture',
+      ],
+    },
+    gdb: {
+      titleMatch: ['gdb', 'graded discussion'],
+      containerSelectors: [
+        '#MainContent_divRecord',
+        '#MainContent_pnlGDB',
+        '#MainContent_gvGDB',
+        '#MainContent_divGDB',
+      ],
+    },
+  };
+
+  const check = containerChecks[pageType];
+  if (!check) return false;
+
+  const hasTitleMatch = check.titleMatch.some(t => pageTitle.includes(t));
+  const hasContainer = check.containerSelectors.some(sel => html.includes(sel.replace('#', 'id="')));
+
+  return hasTitleMatch && hasContainer;
+}
+
+function extractPageTitle(html: string): string {
+  const match = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+  return match ? match[1].trim() : '';
 }
 
 function getSemanticSelectors(pageType: 'lecture' | 'quiz' | 'assignment' | 'gdb'): SemanticSelector[] {
@@ -90,32 +153,32 @@ function getSemanticSelectors(pageType: 'lecture' | 'quiz' | 'assignment' | 'gdb
         { selector: '[id*="lblLectureTitle_"]', count: 0, expectedMin: 1 },
         { selector: '[id*="lblTitle_"]', count: 0, expectedMin: 1 },
         { selector: '[class*="ActivitySession"]', count: 0, expectedMin: 1 },
-        { selector: '#MainContent_pnlLecture', count: 0, expectedMin: 1 },
-        { selector: '#MainContent_gvLecture', count: 0, expectedMin: 1 },
+        { selector: '#MainContent_pnlLecture', count: 0, expectedMin: 999 },
+        { selector: '#MainContent_gvLecture', count: 0, expectedMin: 999 },
       ];
     case 'quiz':
       return [
         { selector: '[id*="gvTileRepeaterQuiz_"]', count: 0, expectedMin: 1 },
         { selector: '[id*="gvQuiz_"]', count: 0, expectedMin: 1 },
         { selector: '[id*="lblQuizTitle_"]', count: 0, expectedMin: 1 },
-        { selector: '#MainContent_pnlQuiz', count: 0, expectedMin: 1 },
-        { selector: '#MainContent_gvQuiz', count: 0, expectedMin: 1 },
+        { selector: '#MainContent_pnlQuiz', count: 0, expectedMin: 999 },
+        { selector: '#MainContent_gvQuiz', count: 0, expectedMin: 999 },
       ];
     case 'assignment':
       return [
         { selector: '[id*="gvTileRepeaterAssignment_"]', count: 0, expectedMin: 1 },
         { selector: '[id*="gvAssignment_"]', count: 0, expectedMin: 1 },
         { selector: '[id*="lblTitle_"]', count: 0, expectedMin: 1 },
-        { selector: '#MainContent_pnlAssignment', count: 0, expectedMin: 1 },
-        { selector: '#MainContent_gvAssignment', count: 0, expectedMin: 1 },
+        { selector: '#MainContent_pnlAssignment', count: 0, expectedMin: 999 },
+        { selector: '#MainContent_gvAssignment', count: 0, expectedMin: 999 },
       ];
     case 'gdb':
       return [
         { selector: '[id*="gvTileRepeaterGDB_pnl_"]', count: 0, expectedMin: 1 },
         { selector: '[id*="gvTileRepeaterGDB_lbl"]', count: 0, expectedMin: 1 },
         { selector: '[id*="lblTitle_"]', count: 0, expectedMin: 1 },
-        { selector: '#MainContent_pnlGDB', count: 0, expectedMin: 1 },
-        { selector: '#MainContent_gvGDB', count: 0, expectedMin: 1 },
+        { selector: '#MainContent_pnlGDB', count: 0, expectedMin: 999 },
+        { selector: '#MainContent_gvGDB', count: 0, expectedMin: 999 },
         { selector: '[class*="GDBTitle"]', count: 0, expectedMin: 1 },
       ];
   }

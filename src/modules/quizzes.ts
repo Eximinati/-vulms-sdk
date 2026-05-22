@@ -5,6 +5,8 @@ import { SessionManager } from '../core/session';
 import type { Quiz } from '../types/quizzes';
 import { parseQuizzes } from '../parsers/quiz-parser';
 import { noopLogger, type Logger } from '../utils/logger';
+import type { RuntimeState } from '../core/runtime-state';
+import { getCache, setCache } from '../core/runtime-state';
 
 export interface QuizSummary {
   total: number;
@@ -39,19 +41,21 @@ export interface QuizTraversalReport {
 export class QuizModule {
   private session: SessionManager;
   private debug!: Logger;
+  private runtime: RuntimeState;
   private navDir: string;
   private traversalSteps: QuizTraversalStep[] = [];
 
-  constructor(session: SessionManager, debug: Logger = noopLogger) {
+  constructor(session: SessionManager, debug: Logger = noopLogger, runtime?: RuntimeState) {
     this.session = session;
     this.debug = debug.child('quizzes');
+    this.runtime = runtime ?? { loggedIn: false, cache: {}, telemetry: { cacheHits: 0, cacheMisses: 0, skippedTraversals: 0, requestsSaved: 0 }, createdAt: Date.now() };
     this.navDir = path.join(process.cwd(), 'debug', 'navigation', 'quizzes');
     if (!fs.existsSync(this.navDir)) fs.mkdirSync(this.navDir, { recursive: true });
   }
 
-  async getQuizzes(courseCode?: string): Promise<Quiz[]> {
+  async getQuizzes(courseCode?: string, options?: { forceRefresh?: boolean }): Promise<Quiz[]> {
     if (courseCode) return this.getQuizzesForCourse(courseCode);
-    return this.getAllQuizzes();
+    return this.getAllQuizzes(options?.forceRefresh);
   }
 
   async getAll(): Promise<QuizAggregate> {
@@ -100,7 +104,7 @@ export class QuizModule {
       } else if (step.error) {
         summary[step.courseCode] = `NAVIGATION FAILED (${step.error})`;
       } else {
-        summary[step.courseCode] = 'EMPTY';
+        summary[step.courseCode] = 'No quizzes available';
       }
     }
     return summary;
@@ -142,25 +146,48 @@ export class QuizModule {
     }
 
     if (quizzes.length === 0) {
-      this.debug.warn(`[EMPTY] course=${courseCode} reason=no quizzes extracted`);
+      this.debug.debug(`[EMPTY QUIZ PAGE] course=${courseCode} reason=no quizzes available`);
     }
 
     return quizzes;
   }
 
-  private async getAllQuizzes(): Promise<Quiz[]> {
+  private async getAllQuizzes(forceRefresh: boolean = false): Promise<Quiz[]> {
+    const cached = getCache<Quiz[]>(this.runtime, 'quizzes');
+    if (cached && !forceRefresh) {
+      this.debug.debug('[CACHE HIT] quizzes');
+      return cached;
+    }
+
+    this.debug.debug('[CACHE MISS] quizzes');
     this.traversalSteps = [];
     const http = this.session.getHttpClient();
     const pbe = this.session.getPostBackEngine();
 
-    const homeHtml = await http.get({ path: '/Home.aspx' });
+    const homeHtml = this.runtime.dashboardHtml
+      ? this.runtime.dashboardHtml
+      : await http.get({ path: '/Home.aspx' });
     const courseIndices = this.findAllCourseIndices(homeHtml);
     this.debug.info(`[COURSES] Found ${courseIndices.length} courses: ${courseIndices.map(([, c]) => c).join(', ')}`);
 
     const allQuizzes: Quiz[] = [];
     const seen = new Set<string>();
+    const indicators = this.runtime.dashboardIndicators;
 
     for (const [index, code] of courseIndices) {
+      if (indicators && !indicators.quizzes.has(code)) {
+        this.debug.debug(`[SKIPPED TRAVERSAL] ${code} quiz (no dashboard indicator)`);
+        this.runtime.telemetry.skippedTraversals++;
+        this.runtime.telemetry.requestsSaved++;
+        this.traversalSteps.push({
+          courseCode: code,
+          success: true,
+          htmlLength: 0,
+          quizzesFound: 0,
+        });
+        continue;
+      }
+
       this.debug.info(`[COURSE] ${code}`);
 
       pbe.clearState();
@@ -187,7 +214,7 @@ export class QuizModule {
         this.debug.info(`[PARSE] course=${code} quizzesFound=${quizzes.length} confidence=${confidence.confidence}`);
 
         if (quizzes.length === 0) {
-          this.debug.warn(`[EMPTY] course=${code} reason=no quizzes extracted`);
+          this.debug.debug(`[EMPTY QUIZ PAGE] course=${code} reason=no quizzes available`);
         }
 
         for (const q of quizzes) {
@@ -215,6 +242,7 @@ export class QuizModule {
 
     this.printTraversalSummary();
     this.debug.info(`[TOTAL] ${allQuizzes.length} quizzes from ${courseIndices.length} courses`);
+    setCache(this.runtime, 'quizzes', allQuizzes);
     return allQuizzes;
   }
 

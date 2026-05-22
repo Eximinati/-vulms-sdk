@@ -1,2 +1,2 @@
-export { VulmsError, VulmsAuthError, VulmsParsingError } from './errors';
+export { VulmsError, AuthenticationError, ParsingError } from './errors';
 export { SessionManager } from './session';

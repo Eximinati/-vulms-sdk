@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { VulmsSDK } from '../src';
 import { TelemetryStore, type TelemetryEntry } from '../src/utils/telemetry-store';
+import { computeOutputFingerprint } from '../src/utils/output-normalizer';
 
 const C = {
   green: '\x1b[32m',
@@ -49,7 +50,7 @@ async function runSingleOperation(
   sdk: VulmsSDK,
   operation: string,
   courseCode?: string,
-): Promise<{ success: boolean; itemCount: number; error?: string }> {
+): Promise<{ success: boolean; itemCount: number; error?: string; data?: unknown }> {
   try {
     let result: unknown;
     switch (operation) {
@@ -75,7 +76,7 @@ async function runSingleOperation(
         throw new Error(`Unknown operation: ${operation}`);
     }
     const itemCount = Array.isArray(result) ? result.length : 0;
-    return { success: true, itemCount };
+    return { success: true, itemCount, data: result };
   } catch (e) {
     return { success: false, itemCount: 0, error: e instanceof Error ? e.message : String(e) };
   }
@@ -131,6 +132,7 @@ async function runStressSuite(
       const duration = Date.now() - start;
       const memAfter = getMemoryMb();
       const tracesAfter = sdk.getTraces().length;
+      const outputFingerprint = result.success && result.data ? computeOutputFingerprint(result.data) : undefined;
 
       const iter: StressIteration = {
         iteration: i + 1,
@@ -166,7 +168,10 @@ async function runStressSuite(
         requestCount: tracesAfter - tracesBefore,
         skippedCount: 0,
         memoryUsageMb: memAfter,
+        outputFingerprint,
       });
+
+      sdk.releaseMemory();
 
       if (!useSameSession && sdk) {
         sdk = null;

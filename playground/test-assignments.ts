@@ -7,6 +7,7 @@ async function main() {
   const result = await withLogin(async (client) => {
     console.log('Fetching all assignments across all courses...\n');
 
+    const courses = await client.courses.getEnrolledCourses();
     const agg = await client.assignments.getAll();
 
     console.log(`${C.yellow}=== ASSIGNMENT SUMMARY ===${C.reset}\n`);
@@ -17,10 +18,20 @@ async function main() {
     console.log(`  ${C.blue}Result Declared:${C.reset} ${agg.summary.resultDeclared}`);
     console.log();
 
-    const sortedCourses = Array.from(agg.byCourse.keys()).sort();
-    for (const courseCode of sortedCourses) {
+    const allCourseCodes = courses.map(c => c.code).sort();
+
+    for (const courseCode of allCourseCodes) {
       const assignments = agg.byCourse.get(courseCode) || [];
-      console.log(`${C.cyan}=== ${courseCode} ===${C.reset} (${assignments.length} assignment${assignments.length !== 1 ? 's' : ''})`);
+
+      console.log(`${C.cyan}=== ${courseCode} ===${C.reset}`);
+
+      if (assignments.length === 0) {
+        console.log(`  ${C.yellow}No Assignment Yet${C.reset}`);
+        console.log();
+        continue;
+      }
+
+      console.log(`  (${assignments.length} assignment${assignments.length !== 1 ? 's' : ''})`);
 
       for (const a of assignments) {
         const statusColor = a.status === 'submitted' ? C.green :
@@ -71,7 +82,7 @@ async function main() {
     console.log(`  ${C.yellow}Pending:${C.reset}        ${agg.summary.pending}`);
     console.log(`  ${C.red}Missed:${C.reset}          ${agg.summary.missed}`);
     console.log(`  ${C.blue}Result Declared:${C.reset} ${agg.summary.resultDeclared}`);
-    console.log(`  Courses: ${sortedCourses.length}`);
+    console.log(`  Courses: ${allCourseCodes.length}`);
 
     const traces = client.getTraces();
     console.log(`\n${C.yellow}HTTP Traces: ${traces.length} requests${C.reset}`);

@@ -1,21 +1,35 @@
 {
   "name": "vulms-sdk",
-  "version": "0.1.0",
-  "description": "TypeScript SDK for Virtual University LMS (VULMS) — Playwright login, ASP.NET PostBack navigation, HTML parsing",
+  "version": "0.1.0-beta.1",
+  "description": "TypeScript SDK for Virtual University LMS (VULMS) — fetch assignments, quizzes, GDBs, and lectures with smart caching and session management",
   "keywords": [
     "vulms",
     "virtual-university",
     "lms",
-    "scraper",
-    "playwright",
-    "typescript"
+    "sdk",
+    "assignments",
+    "quizzes",
+    "typescript",
+    "education"
   ],
   "author": "",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/your-org/vulms-sdk"
   },
+  "homepage": "https://github.com/your-org/vulms-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/your-org/vulms-sdk/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/your-org"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -27,7 +41,10 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=18"
@@ -38,7 +55,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "dev:test": "tsx playground/test.ts",
+    "lint": "echo \"no lint configured\"",
+    "prepack": "npm run build",
     "dev:login": "tsx playground/test-login.ts",
     "dev:courses": "tsx playground/test-courses.ts",
     "dev:assignments": "tsx playground/test-assignments.ts",
@@ -46,14 +64,12 @@
     "dev:gdb": "tsx playground/test-gdb.ts",
     "dev:lectures": "tsx playground/test-lectures.ts",
     "dev:activities": "tsx playground/test-activities.ts",
-    "dev:report": "tsx playground/test-report.ts",
-    "dev:per-course": "tsx playground/test-per-course.ts",
     "dev:telemetry": "tsx playground/collect-telemetry.ts",
     "dev:stress": "tsx playground/stress-test.ts",
+    "dev:stress-ms": "tsx playground/multi-session-stress.ts",
     "dev:memory": "tsx playground/memory-trace-validation.ts",
     "dev:benchmark": "tsx playground/benchmark.ts",
-    "dev:release-gate": "tsx playground/release-gate.ts",
-    "dev:readiness": "tsx -e \"import { printBetaReadinessSummary } from './src/utils/beta-readiness'; printBetaReadinessSummary()\""
+    "dev:release-gate": "tsx playground/release-gate.ts"
   },
   "dependencies": {
     "axios": "^1.7.0",

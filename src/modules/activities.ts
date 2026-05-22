@@ -9,6 +9,8 @@ import type { DashboardCourse } from '../types/dashboard';
 import { toUnifiedActivity, buildAggregate } from '../utils/activity';
 import { noopLogger, type Logger } from '../utils/logger';
 import { PerformanceTracker } from '../utils/performance';
+import type { RuntimeState } from '../core/runtime-state';
+import { getCache, setCache } from '../core/runtime-state';
 
 export interface SmartFetchOptions {
   enabled?: boolean;
@@ -29,17 +31,25 @@ export class ActivityModule {
   private lectures: LectureModule;
   private dashboard: DashboardModule;
   private debug: Logger;
+  private runtime: RuntimeState;
 
-  constructor(session: SessionManager, debug: Logger = noopLogger) {
+  constructor(session: SessionManager, debug: Logger = noopLogger, runtime?: RuntimeState) {
     this.debug = debug.child('activities');
-    this.assignments = new AssignmentModule(session, this.debug);
-    this.quizzes = new QuizModule(session, this.debug);
-    this.gdbs = new GDBModule(session, this.debug);
-    this.lectures = new LectureModule(session, this.debug);
-    this.dashboard = new DashboardModule(session, this.debug);
+    this.runtime = runtime ?? { loggedIn: false, cache: {}, telemetry: { cacheHits: 0, cacheMisses: 0, skippedTraversals: 0, requestsSaved: 0 }, createdAt: Date.now() };
+    this.assignments = new AssignmentModule(session, this.debug, this.runtime);
+    this.quizzes = new QuizModule(session, this.debug, this.runtime);
+    this.gdbs = new GDBModule(session, this.debug, this.runtime);
+    this.lectures = new LectureModule(session, this.debug, this.runtime);
+    this.dashboard = new DashboardModule(session, this.debug, this.runtime);
   }
 
   async getAll(options: SmartFetchOptions = {}): Promise<ActivityAggregate | SmartActivityResult> {
+    const cached = getCache<ActivityAggregate>(this.runtime, 'activities');
+    if (cached && !options.enabled) {
+      this.debug.debug('[CACHE HIT] activities');
+      return cached;
+    }
+
     if (options.enabled) {
       return this.getAllSmart(options);
     }
@@ -64,6 +74,7 @@ export class ActivityModule {
 
     const agg = buildAggregate(unified);
     this.debug.info(`Activities: ${agg.pending.length} pending, ${agg.submitted.length} submitted, ${agg.missed.length} missed, ${agg.resultDeclared.length} results`);
+    setCache(this.runtime, 'activities', agg);
     return agg;
   }
 

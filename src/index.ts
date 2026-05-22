@@ -1,46 +1,22 @@
 export { VulmsSDK } from './vulms-sdk';
 export type { SDKConfig } from './vulms-sdk';
-export { HttpClient } from './client/http-client';
-export { PostBackEngine } from './client/postback-engine';
-export { loginWithBrowser } from './client/browser-login';
-export type {
-  PostBackOptions,
-  BrowserLoginOptions,
-  RequestOptions,
-  PostRequestOptions,
-  RequestTrace,
-  RetryConfig,
-} from './client';
-export { SessionManager } from './core/session';
-export { AssignmentModule } from './modules/assignments';
-export { CourseModule } from './modules/courses';
-export { QuizModule } from './modules/quizzes';
-export { GDBModule } from './modules/gdb';
-export { LectureModule } from './modules/lectures';
-export { ActivityModule } from './modules/activities';
-export { VulmsError, VulmsAuthError, VulmsParsingError } from './core/errors';
+
 export {
-  ActivityStatusSchema,
-  CourseSchema,
-  AssignmentSchema,
-  AspNetWebFormDataSchema,
-  QuizSchema,
-  QuizStatusSchema,
-  QuizAvailabilityStatusSchema,
-  QuizSubmissionStatusSchema,
-  QuizResultStatusSchema,
-  GDBSchema,
-  GDBStatusSchema,
-  LectureSchema,
-  LectureStatusSchema,
-} from './types';
+  VulmsError,
+  AuthenticationError,
+  SessionExpiredError,
+  NavigationError,
+  ValidationError,
+  RateLimitError,
+  ParsingError,
+} from './core/errors';
+export type { VulmsErrorOptions } from './core/errors';
+
+export type { LogLevel } from './utils/logger';
+
 export type {
-  ActivityStatus,
   Course,
   Assignment,
-  AspNetWebFormData,
-  SessionState,
-  LoginResult,
   Quiz,
   QuizStatus,
   QuizAvailabilityStatus,
@@ -53,35 +29,32 @@ export type {
   UnifiedActivity,
   ActivityAggregate,
   ActivityType,
+  ActivityStatus,
+  SessionState,
+  LoginResult,
 } from './types';
+
 export {
-  parseAssignments,
-  parseCoursesFromHome,
-  parseQuizzes,
-  parseGDBs,
-  parseLectures,
-} from './parsers';
-export type {
-  ParseAssignmentsOptions,
-  ParseAssignmentsResult,
-} from './parsers';
-export type { ParseConfidence, ParseWarning } from './utils/confidence';
-export type { AssignmentSummary, AssignmentAggregate, TraversalStep, TraversalReport } from './modules/assignments';
-export {
-  generateIntegrationReport,
-  saveIntegrationReport,
-  listReports,
-  loadReport,
-  printReportSummary,
-} from './utils/report';
-export type { IntegrationReport } from './utils/report';
-export {
-  dedupe,
-  dedupeAssignments,
-  dedupeQuizzes,
-  dedupeGDBs,
-  dedupeLectures,
-  dedupeUnifiedActivities,
-} from './utils/dedupe';
-export { checkSessionHealth, isSessionExpired, SessionRecovery } from './core/session-recovery';
-export type { SessionHealth } from './core/session-recovery';
+  ActivityStatusSchema,
+  CourseSchema,
+  AssignmentSchema,
+  QuizSchema,
+  QuizStatusSchema,
+  QuizAvailabilityStatusSchema,
+  QuizSubmissionStatusSchema,
+  QuizResultStatusSchema,
+  GDBSchema,
+  GDBStatusSchema,
+  LectureSchema,
+  LectureStatusSchema,
+} from './types';
+
+export type { AssignmentSummary, AssignmentAggregate } from './modules/assignments';
+
+export type { DashboardCourse, DashboardResult, DashboardMetrics } from './types/dashboard';
+
+export type { SmartFetchOptions } from './types/dashboard';
+export type { SmartActivityResult } from './modules/activities';
+
+export { areSemanticallyEqual, getSemanticDiff, computeOutputFingerprint } from './utils/output-normalizer';
+export type { NormalizedOutput } from './utils/output-normalizer';

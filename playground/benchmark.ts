@@ -260,6 +260,32 @@ async function main() {
     const savings = ((legacyResult.duration - smartResult.duration) / legacyResult.duration * 100).toFixed(0);
     log(`  Smart optimization: ${savings}% faster than legacy`);
   }
+
+  const reportDir = path.join(process.cwd(), 'benchmarks');
+  if (!fs.existsSync(reportDir)) fs.mkdirSync(reportDir, { recursive: true });
+  const reportPath = path.join(reportDir, `benchmark-${new Date().toISOString().split('T')[0]}.md`);
+  const mdLines: string[] = [];
+  mdLines.push('# Benchmark Report');
+  mdLines.push('');
+  mdLines.push(`Generated: ${new Date().toISOString()}`);
+  mdLines.push('');
+  mdLines.push('## Results');
+  mdLines.push('');
+  mdLines.push('| Benchmark | Duration | Items | Requests | Status |');
+  mdLines.push('|-----------|----------|-------|----------|--------|');
+  for (const r of results) {
+    const status = r.success ? '✅ PASS' : '❌ FAIL';
+    mdLines.push(`| ${r.name} | ${r.duration}ms | ${r.itemCount} | ${r.requestCount} | ${status} |`);
+  }
+  mdLines.push('');
+  mdLines.push(`**Total:** ${results.length} | **Avg Duration:** ${avgDuration.toFixed(0)}ms | **Pass:** ${successful.length} | **Fail:** ${failed.length}`);
+  if (smartResult && legacyResult && smartResult.success && legacyResult.success) {
+    const savings = ((legacyResult.duration - smartResult.duration) / legacyResult.duration * 100).toFixed(0);
+    mdLines.push('');
+    mdLines.push(`**Smart optimization:** ${savings}% faster than legacy mode`);
+  }
+  fs.writeFileSync(reportPath, mdLines.join('\n'), 'utf8');
+  log(`\n  Report saved to: ${reportPath}`);
 }
 
 main().catch(e => {

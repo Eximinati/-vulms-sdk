@@ -4,10 +4,32 @@ export interface NormalizedOutput {
     itemCount: number;
     courses: string[];
     activityTypes: string[];
-    timestamp?: number;
     hasDynamicContent: boolean;
   };
 }
+
+const DYNAMIC_KEYS = new Set([
+  'timestamp', 'createdAt', 'updatedAt', 'modifiedAt', 'submittedAt',
+  'dueDate', 'date', 'startedAt', 'endedAt', 'publishedAt',
+  'traceId', 'requestId', 'sessionId', 'id', '_id', 'correlationId',
+  'duration', 'elapsed', 'elapsedMs', 'timeMs', 'durationMs',
+  'memoryUsage', 'memoryUsageMb', 'heapUsed', 'rss',
+  'cacheHit', 'cacheMiss', 'cacheHits', 'cacheMisses',
+  'skippedTraversals', 'skippedCount', 'requestsSaved', 'requestCount',
+  'retryCount', 'retries', 'redirectCount',
+  'viewStateSize', 'eventValidationSize',
+  'validationState', 'failureType', 'success',
+  'operation', 'module', 'courseCode',
+]);
+
+const DYNAMIC_PATTERNS = [
+  /timestamp/i, /createdAt/i, /updatedAt/i, /modifiedAt/i, /submittedAt/i,
+  /dueDate/i, /startedAt/i, /endedAt/i, /publishedAt/i,
+  /traceId/i, /requestId/i, /sessionId/i, /correlationId/i,
+  /duration/i, /elapsed/i, /timeMs/i, /memoryUsage/i,
+  /cacheHit/i, /skipped/i, /retry/i, /redirect/i,
+  /viewState/i, /eventValidation/i, /validation/i, /failure/i,
+];
 
 export function normalizeOutput(output: unknown, options: {
   stripTimestamps?: boolean;
@@ -22,10 +44,8 @@ export function normalizeOutput(output: unknown, options: {
   const activityTypes = new Set<string>();
   let hasDynamicContent = false;
 
-  collectMetadata(normalized, courses, activityTypes, (k) => {
-    if (['timestamp', 'date', 'createdAt', 'updatedAt', 'id', '_id'].includes(k)) {
-      hasDynamicContent = true;
-    }
+  collectMetadata(normalized, courses, activityTypes, () => {
+    hasDynamicContent = true;
   });
 
   return {
@@ -34,7 +54,6 @@ export function normalizeOutput(output: unknown, options: {
       itemCount: countItems(normalized),
       courses: Array.from(courses).sort(),
       activityTypes: Array.from(activityTypes).sort(),
-      timestamp: extractTimestamp(normalized),
       hasDynamicContent,
     },
   };
@@ -43,7 +62,7 @@ export function normalizeOutput(output: unknown, options: {
 function deepNormalize(value: unknown, opts: { stripTimestamps: boolean; stripIds: boolean; sortArrays: boolean }): unknown {
   if (value === null || value === undefined) return null;
   if (typeof value === 'string') {
-    if (opts.stripTimestamps && isTimestamp(value)) return '[TIMESTAMP]';
+    if (opts.stripTimestamps && isTimestamp(value)) return '[DATE]';
     return value;
   }
   if (typeof value === 'number') return value;
@@ -56,9 +75,14 @@ function deepNormalize(value: unknown, opts: { stripTimestamps: boolean; stripId
     const obj = value as Record<string, unknown>;
     const result: Record<string, unknown> = {};
 
-    for (const [key, val] of Object.entries(obj)) {
+    const keys = Object.keys(obj).sort();
+    for (const key of keys) {
+      const val = obj[key];
+      if (shouldStripKey(key)) {
+        continue;
+      }
       if (opts.stripTimestamps && isTimestampKey(key)) {
-        result[key] = '[TIMESTAMP]';
+        result[key] = '[DATE]';
       } else if (opts.stripIds && isIdKey(key)) {
         result[key] = '[ID]';
       } else {
@@ -72,17 +96,26 @@ function deepNormalize(value: unknown, opts: { stripTimestamps: boolean; stripId
   return value;
 }
 
+function shouldStripKey(key: string): boolean {
+  const lower = key.toLowerCase();
+  if (DYNAMIC_KEYS.has(lower)) return true;
+  for (const pattern of DYNAMIC_PATTERNS) {
+    if (pattern.test(key)) return true;
+  }
+  return false;
+}
+
 function isTimestamp(value: string): boolean {
   const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
   return isoPattern.test(value) || /^\d{10,13}$/.test(value);
 }
 
 function isTimestampKey(key: string): boolean {
-  return ['timestamp', 'createdAt', 'updatedAt', 'modifiedAt', 'submittedAt', 'dueDate'].includes(key.toLowerCase());
+  return ['timestamp', 'createdAt', 'updatedAt', 'modifiedAt', 'submittedAt', 'dueDate', 'startedAt', 'endedAt'].includes(key.toLowerCase());
 }
 
 function isIdKey(key: string): boolean {
-  return ['id', '_id', 'traceId', 'requestId', 'sessionId'].includes(key.toLowerCase());
+  return ['id', '_id', 'traceId', 'requestId', 'sessionId', 'correlationId'].includes(key.toLowerCase());
 }
 
 function sortArray(arr: unknown[]): unknown[] {
@@ -123,10 +156,10 @@ function collectMetadata(
   }
 
   for (const key of Object.keys(record)) {
-    if (['timestamp', 'date', 'id'].some(k => key.toLowerCase().includes(k))) {
+    if (shouldStripKey(key)) {
       onDynamicKey(key);
     }
-    if (typeof record[key] === 'object') {
+    if (typeof record[key] === 'object' && record[key] !== null) {
       collectMetadata(record[key], courses, activityTypes, onDynamicKey);
     }
   }
@@ -148,25 +181,6 @@ function countItems(obj: unknown): number {
     return 1;
   }
   return 0;
-}
-
-function extractTimestamp(obj: unknown): number | undefined {
-  if (!obj || typeof obj !== 'object') return undefined;
-
-  const record = obj as Record<string, unknown>;
-
-  if (record.timestamp && typeof record.timestamp === 'number') return record.timestamp;
-  if (record.createdAt && typeof record.createdAt === 'string') {
-    return new Date(record.createdAt).getTime();
-  }
-
-  for (const value of Object.values(record)) {
-    if (typeof value === 'number' && value > 1000000000000 && value < 2000000000000) {
-      return value;
-    }
-  }
-
-  return undefined;
 }
 
 export function areSemanticallyEqual(a: unknown, b: unknown, options: { stripTimestamps?: boolean; stripIds?: boolean } = {}): boolean {
@@ -212,4 +226,16 @@ export function getSemanticDiff(a: unknown, b: unknown, options: { stripTimestam
   }
 
   return diffs;
+}
+
+export function computeOutputFingerprint(output: unknown): string {
+  const normalized = normalizeOutput(output);
+  const json = JSON.stringify(normalized.normalized);
+  let hash = 0;
+  for (let i = 0; i < json.length; i++) {
+    const char = json.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return hash.toString(36);
 }

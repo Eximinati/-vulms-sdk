@@ -5,19 +5,23 @@ import type { Lecture } from '../types/lectures';
 import { parseLectures } from '../parsers/lecture-parser';
 import { noopLogger, type Logger } from '../utils/logger';
 import { validateLecturePage } from '../utils/validation';
+import type { RuntimeState } from '../core/runtime-state';
+import { getCache, setCache } from '../core/runtime-state';
 
 export class LectureModule {
   private session: SessionManager;
   private debug!: Logger;
+  private runtime: RuntimeState;
 
-  constructor(session: SessionManager, debug: Logger = noopLogger) {
+  constructor(session: SessionManager, debug: Logger = noopLogger, runtime?: RuntimeState) {
     this.session = session;
     this.debug = debug.child('lectures');
+    this.runtime = runtime ?? { loggedIn: false, cache: {}, telemetry: { cacheHits: 0, cacheMisses: 0, skippedTraversals: 0, requestsSaved: 0 }, createdAt: Date.now() };
   }
 
-  async getLectures(courseCode?: string): Promise<Lecture[]> {
+  async getLectures(courseCode?: string, options?: { forceRefresh?: boolean }): Promise<Lecture[]> {
     if (courseCode) return this.getLecturesForCourse(courseCode);
-    return this.getAllLectures();
+    return this.getAllLectures(options?.forceRefresh);
   }
 
   private async getLecturesForCourse(courseCode: string): Promise<Lecture[]> {
@@ -46,27 +50,44 @@ export class LectureModule {
     this.debug.info(`[PARSE] course=${courseCode} lecturesFound=${lectures.length}`);
 
     if (lectures.length === 0) {
-      this.debug.warn(`[EMPTY] course=${courseCode} reason=no lectures extracted`);
+      this.debug.debug(`[EMPTY LECTURE PAGE] course=${courseCode} reason=no lectures available`);
     }
 
     return lectures;
   }
 
-  private async getAllLectures(): Promise<Lecture[]> {
+  private async getAllLectures(forceRefresh: boolean = false): Promise<Lecture[]> {
+    const cached = getCache<Lecture[]>(this.runtime, 'lectures');
+    if (cached && !forceRefresh) {
+      this.debug.debug('[CACHE HIT] lectures');
+      return cached;
+    }
+
+    this.debug.debug('[CACHE MISS] lectures');
     const http = this.session.getHttpClient();
     const pbe = this.session.getPostBackEngine();
 
     pbe.clearState();
 
-    const homeHtml = await http.get({ path: VULMS_ENDPOINTS.HOME });
+    const homeHtml = this.runtime.dashboardHtml
+      ? this.runtime.dashboardHtml
+      : await http.get({ path: VULMS_ENDPOINTS.HOME });
     const courseIndices = this.findAllCourseIndices(homeHtml);
     this.debug.debug(`Found ${courseIndices.length} courses with lecture buttons`);
 
     const allLectures: Lecture[] = [];
     const seen = new Set<string>();
+    const indicators = this.runtime.dashboardIndicators;
 
     for (let i = 0; i < courseIndices.length; i++) {
       const [index, code] = courseIndices[i];
+
+      if (indicators && !indicators.lectures.has(code)) {
+        this.debug.debug(`[SKIPPED TRAVERSAL] ${code} lecture (no dashboard indicator)`);
+        this.runtime.telemetry.skippedTraversals++;
+        this.runtime.telemetry.requestsSaved++;
+        continue;
+      }
 
       pbe.clearState();
 
@@ -107,6 +128,7 @@ export class LectureModule {
     }
 
     this.debug.info(`Total: ${allLectures.length} lectures`);
+    setCache(this.runtime, 'lectures', allLectures);
     return allLectures;
   }
 

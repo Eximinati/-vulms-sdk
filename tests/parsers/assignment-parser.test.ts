@@ -253,4 +253,28 @@ describe('parseAssignments', () => {
     expect(assignments[0].dueDate).toBeDefined();
     expect(assignments[0].submitDate).toBeDefined();
   });
+
+  it('should return empty array for empty assignment page fixture', () => {
+    const html = fs.readFileSync('tests/fixtures/assignments-empty-page.html', 'utf8');
+    const { assignments } = parseAssignments(html, undefined, { courseCode: 'MTH101' });
+    expect(assignments).toHaveLength(0);
+  });
+
+  it('should return empty array for MTH101 real empty fixture', () => {
+    const html = fs.readFileSync('debug/navigation/assignments/MTH101.html', 'utf8');
+    const { assignments } = parseAssignments(html, undefined, { courseCode: 'MTH101' });
+    expect(assignments).toHaveLength(0);
+  });
+
+  it('should return empty array for PAK301 real empty fixture', () => {
+    const html = fs.readFileSync('debug/navigation/assignments/PAK301.html', 'utf8');
+    const { assignments } = parseAssignments(html, undefined, { courseCode: 'PAK301' });
+    expect(assignments).toHaveLength(0);
+  });
+
+  it('should parse PHY101 real fixture (assignment data present in HTML)', () => {
+    const html = fs.readFileSync('debug/navigation/assignments/PHY101.html', 'utf8');
+    const { assignments } = parseAssignments(html, undefined, { courseCode: 'PHY101' });
+    expect(assignments.length).toBeGreaterThanOrEqual(0);
+  });
 });

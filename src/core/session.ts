@@ -8,7 +8,7 @@ import {
   isLoginSuccess,
   isLoginError,
 } from '../parsers/aspnet-parser';
-import { VulmsAuthError, VulmsParsingError } from './errors';
+import { AuthenticationError, ParsingError } from './errors';
 import { loginWithBrowser } from '../client/browser-login';
 import { noopLogger, type Logger } from '../utils/logger';
 
@@ -77,15 +77,15 @@ export class SessionManager {
 
       return { success: false, error: 'Unexpected login response' };
     } catch (error) {
-      if (error instanceof VulmsParsingError) {
+      if (error instanceof ParsingError) {
         return { success: false, error: error.message };
       }
-      if (error instanceof VulmsAuthError) {
+      if (error instanceof AuthenticationError) {
         return { success: false, error: 'Authentication failed' };
       }
-      throw new VulmsAuthError(
+      throw new AuthenticationError(
         'Login failed',
-        error instanceof Error ? error : undefined,
+        { cause: error instanceof Error ? error : undefined },
       );
     }
   }
@@ -135,7 +135,7 @@ export class SessionManager {
 
   ensureAuthenticated(): void {
     if (!this.state.isValid) {
-      throw new VulmsAuthError(
+      throw new AuthenticationError(
         'Session is not authenticated. Call login() first.',
       );
     }
@@ -143,14 +143,14 @@ export class SessionManager {
 
   async ensureValidSession(): Promise<void> {
     if (!this.state.isValid) {
-      throw new VulmsAuthError(
+      throw new AuthenticationError(
         'Session is not authenticated. Call login() first.',
       );
     }
     const valid = await this.validateSession();
     if (!valid) {
       this.state.isValid = false;
-      throw new VulmsAuthError('Session has expired. Re-login required.');
+      throw new AuthenticationError('Session has expired. Re-login required.');
     }
   }
 

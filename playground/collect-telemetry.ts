@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { VulmsSDK } from '../src';
 import { TelemetryStore, type TelemetryEntry } from '../src/utils/telemetry-store';
+import { computeOutputFingerprint } from '../src/utils/output-normalizer';
 
 const C = {
   green: '\x1b[32m',
@@ -49,6 +50,7 @@ async function collectModuleTelemetry(
   let requestCount = 0;
   let skippedCount = 0;
   let failureType: string | undefined;
+  let outputFingerprint: string | undefined;
 
   try {
     const tracesBefore = sdk.getTraces().length;
@@ -58,6 +60,7 @@ async function collectModuleTelemetry(
 
     if (Array.isArray(result)) {
       itemCount = result.length;
+      outputFingerprint = computeOutputFingerprint(result);
     }
     success = true;
   } catch (e) {
@@ -80,6 +83,7 @@ async function collectModuleTelemetry(
     requestCount,
     skippedCount,
     memoryUsageMb: memAfter,
+    outputFingerprint,
   };
 
   store.recordEntry(entry);

@@ -75,6 +75,7 @@ export class HttpClient {
   private traceRequests: boolean;
   private retryConfig: RetryConfig;
   private traces: RequestTrace[];
+  private maxTraces: number;
 
   constructor(
     options: {
@@ -83,6 +84,7 @@ export class HttpClient {
       traceRequests?: boolean;
       retryConfig?: Partial<RetryConfig>;
       timeout?: number;
+      maxTraces?: number;
     } = {},
   ) {
     this.cookieJar = new tough.CookieJar();
@@ -90,6 +92,7 @@ export class HttpClient {
     this.traceRequests = options.traceRequests ?? false;
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...options.retryConfig };
     this.traces = [];
+    this.maxTraces = options.maxTraces ?? 200;
 
     const headers = { ...DEFAULT_HEADERS, ...options.headers };
 
@@ -269,6 +272,10 @@ export class HttpClient {
       timestamp: Date.now(),
     };
     this.traces.push(trace);
+
+    if (this.traces.length > this.maxTraces) {
+      this.traces = this.traces.slice(-this.maxTraces);
+    }
 
     if (!this.traceRequests) return;
 

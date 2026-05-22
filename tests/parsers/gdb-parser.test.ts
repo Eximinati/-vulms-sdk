@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseGDBs } from '../../src/parsers/gdb-parser';
+import * as fs from 'fs';
 
 describe('parseGDBs', () => {
   it('should parse GDB cards with course grouping', () => {
@@ -99,5 +100,11 @@ describe('parseGDBs', () => {
     expect(gdbs).toHaveLength(1);
     expect(gdbs[0].courseCode).toBe('CS101');
     expect(gdbs[0].title).toBe('GDB 1');
+  });
+
+  it('should return empty array for empty GDB page fixture', () => {
+    const html = fs.readFileSync('tests/fixtures/gdb-empty-page.html', 'utf8');
+    const gdbs = parseGDBs(html);
+    expect(gdbs).toHaveLength(0);
   });
 });

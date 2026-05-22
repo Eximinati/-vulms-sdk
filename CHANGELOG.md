@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0-beta.1] - 2026-05-22
+
+### Added
+- Shared runtime state with single login per SDK lifecycle
+- Dashboard HTML caching after login
+- Smart traversal skipping based on dashboard indicators
+- Output caching with 5-minute TTL and deep-copy isolation
+- Output fingerprinting for deterministic consistency checks
+- Semantic equality comparison (`areSemanticallyEqual`)
+- Bounded trace retention (max 200 entries)
+- Bounded telemetry retention (max 200 in-memory entries)
+- Memory release API (`sdk.releaseMemory()`)
+- Logger levels: `silent`, `error`, `warn`, `info`, `debug`, `trace`
+- Standardized error types: `AuthenticationError`, `SessionExpiredError`, `NavigationError`, `ValidationError`, `RateLimitError`, `ParsingError`
+- SDK config: `cache`, `cacheTtlMs`, `logger`
+- 150 unit tests
+
+### Changed
+- Consistency calculation now groups by `operation:courseCode`
+- Public API cleaned — internal helpers hidden
+- Logger defaults to `warn` level
+- Version bumped to `0.1.0-beta.1`
+
+### Fixed
+- Cache-hit output now identical to cache-miss output
+- Memory growth stabilized under 100MB
+- Release gate consistency >= 95%
+
 ## [0.1.0] - 2024
 
 ### Added

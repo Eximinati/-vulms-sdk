@@ -3,6 +3,7 @@ import { VULMS_ENDPOINTS } from '../constants/urls';
 import { parseDashboard } from '../parsers/dashboard-parser';
 import { DashboardCourse, DashboardResult, DashboardMetrics, DashboardActivityPreview, type DashboardActivityType, type SmartFetchOptions } from '../types/dashboard';
 import { noopLogger, type Logger } from '../utils/logger';
+import type { RuntimeState } from '../core/runtime-state';
 
 export interface DashboardOptions {
   courseCode?: string;
@@ -13,7 +14,7 @@ export class DashboardModule {
   private session: SessionManager;
   private debug: Logger;
 
-  constructor(session: SessionManager, debug: Logger = noopLogger) {
+  constructor(session: SessionManager, debug: Logger = noopLogger, _runtime?: RuntimeState) {
     this.session = session;
     this.debug = debug.child('dashboard');
   }

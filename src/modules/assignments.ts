@@ -5,6 +5,8 @@ import { SessionManager } from '../core/session';
 import type { Assignment } from '../types/assignments';
 import { parseAssignments } from '../parsers/assignment-parser';
 import { noopLogger, type Logger } from '../utils/logger';
+import type { RuntimeState } from '../core/runtime-state';
+import { getCache, setCache } from '../core/runtime-state';
 
 export interface AssignmentSummary {
   total: number;
@@ -39,21 +41,23 @@ export interface TraversalReport {
 export class AssignmentModule {
   private session: SessionManager;
   private debug!: Logger;
+  private runtime: RuntimeState;
   private navDir: string;
   private traversalSteps: TraversalStep[] = [];
 
-constructor(session: SessionManager, debug: Logger = noopLogger) {
+constructor(session: SessionManager, debug: Logger = noopLogger, runtime?: RuntimeState) {
     this.session = session;
     this.debug = debug.child('assignments');
+    this.runtime = runtime ?? { loggedIn: false, cache: {}, telemetry: { cacheHits: 0, cacheMisses: 0, skippedTraversals: 0, requestsSaved: 0 }, createdAt: Date.now() };
     this.navDir = path.join(process.cwd(), 'debug', 'navigation', 'assignments');
     if (!fs.existsSync(this.navDir)) fs.mkdirSync(this.navDir, { recursive: true });
   }
 
-  async getAssignments(courseCode?: string): Promise<Assignment[]> {
+  async getAssignments(courseCode?: string, options?: { forceRefresh?: boolean }): Promise<Assignment[]> {
     if (courseCode) {
       return this.getAssignmentsForCourse(courseCode);
     }
-    return this.getAllAssignments();
+    return this.getAllAssignments(options?.forceRefresh);
   }
 
   async getAll(): Promise<AssignmentAggregate> {
@@ -108,7 +112,7 @@ constructor(session: SessionManager, debug: Logger = noopLogger) {
       } else if (step.error) {
         summary[step.courseCode] = `NAVIGATION FAILED (${step.error})`;
       } else {
-        summary[step.courseCode] = 'EMPTY';
+        summary[step.courseCode] = 'No assignments available';
       }
     }
     return summary;
@@ -148,27 +152,51 @@ constructor(session: SessionManager, debug: Logger = noopLogger) {
     this.debug.info(`[PARSE] course=${courseCode} layout=${metrics.layout} assignmentsFound=${assignments.length} confidence=${confidence.confidence}`);
 
     if (assignments.length === 0) {
-      this.debug.warn(`[EMPTY] course=${courseCode} reason=no assignments extracted`);
+      this.debug.debug(`[EMPTY ASSIGNMENT PAGE] course=${courseCode} reason=no assignments available`);
     }
 
     return assignments;
   }
 
-  async getAllAssignments(): Promise<Assignment[]> {
+  async getAllAssignments(forceRefresh: boolean = false): Promise<Assignment[]> {
+    const cached = getCache<Assignment[]>(this.runtime, 'assignments');
+    if (cached && !forceRefresh) {
+      this.debug.debug('[CACHE HIT] assignments');
+      return cached;
+    }
+
+    this.debug.debug('[CACHE MISS] assignments');
     this.traversalSteps = [];
 
     const http = this.session.getHttpClient();
     const pbe = this.session.getPostBackEngine();
 
-    const homeHtml = await http.get({ path: '/Home.aspx' });
+    const homeHtml = this.runtime.dashboardHtml
+      ? this.runtime.dashboardHtml
+      : await http.get({ path: '/Home.aspx' });
     const courseIndices = this.findAllCourseIndices(homeHtml);
 
     this.debug.info(`[COURSES] Found ${courseIndices.length} courses: ${courseIndices.map(([, c]) => c).join(', ')}`);
 
     const allAssignments: Assignment[] = [];
     const seen = new Set<string>();
+    const indicators = this.runtime.dashboardIndicators;
 
     for (const [index, code] of courseIndices) {
+      if (indicators && !indicators.assignments.has(code)) {
+        this.debug.debug(`[SKIPPED TRAVERSAL] ${code} assignment (no dashboard indicator)`);
+        this.runtime.telemetry.skippedTraversals++;
+        this.runtime.telemetry.requestsSaved++;
+        this.traversalSteps.push({
+          courseCode: code,
+          eventTarget: '',
+          success: true,
+          htmlLength: 0,
+          assignmentsFound: 0,
+        });
+        continue;
+      }
+
       this.debug.info(`[COURSE] ${code}`);
 
       pbe.clearState();
@@ -197,7 +225,7 @@ constructor(session: SessionManager, debug: Logger = noopLogger) {
         this.debug.info(`[PARSE] course=${code} layout=${metrics.layout} parser=${metrics.parser} assignmentsFound=${assignments.length} confidence=${confidence.confidence} selectors=${metrics.selectorsMatched}/${metrics.selectorsTotal} indices=[${metrics.repeaterIndices.join(',')}] emptyFields=[${metrics.emptyFields.join(',')}]`);
 
         if (assignments.length === 0) {
-          this.debug.warn(`[EMPTY] course=${code} reason=no assignments extracted`);
+          this.debug.debug(`[EMPTY ASSIGNMENT PAGE] course=${code} reason=no assignments available`);
         }
 
         for (const a of assignments) {
@@ -232,6 +260,7 @@ constructor(session: SessionManager, debug: Logger = noopLogger) {
     this.printTraversalSummary();
 
     this.debug.info(`[TOTAL] ${allAssignments.length} assignments from ${courseIndices.length} courses`);
+    setCache(this.runtime, 'assignments', allAssignments);
     return allAssignments;
   }
 
