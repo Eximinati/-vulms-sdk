@@ -1,15 +1,9 @@
 # vulms-sdk
 
-[![npm version](https://img.shields.io/npm/v/vulms-sdk?color=blue&label=beta)](https://www.npmjs.com/package/vulms-sdk)
-[![CI](https://github.com/your-org/vulms-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/vulms-sdk/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-150%20passing-brightgreen)](https://github.com/your-org/vulms-sdk)
-[![TypeScript](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-
-TypeScript SDK for Virtual University LMS (VULMS). Fetch assignments, quizzes, GDBs, lectures with smart caching, session management, and deterministic outputs.
+[![npm version](https://img.shields.io/npm/v/@vulms/sdk?color=blue&label=beta)](https://www.npmjs.com/package/@vulms/sdk)
 
 ```bash
-npm install vulms-sdk
+npm install @vulms/sdk
 ```
 
 ---
@@ -17,7 +11,7 @@ npm install vulms-sdk
 ## Quick Start
 
 ```typescript
-import { VulmsSDK } from 'vulms-sdk';
+import { VulmsSDK } from '@vulms/sdk';
 
 const sdk = new VulmsSDK();
 const result = await sdk.loginWithBrowser('BC000000000', 'password');

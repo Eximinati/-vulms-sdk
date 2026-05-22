@@ -1,5 +1,5 @@
 {
-  "name": "vulms-sdk",
+  "name": "@vulms/sdk",
   "version": "0.1.0-beta.2",
   "description": "TypeScript SDK for Virtual University LMS (VULMS) — fetch assignments, quizzes, GDBs, and lectures with smart caching and session management",
   "keywords": [
