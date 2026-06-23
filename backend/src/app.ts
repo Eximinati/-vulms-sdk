@@ -8,6 +8,7 @@ import coursesRoutes from './routes/courses.js';
 import dashboardRoutes from './routes/dashboard.js';
 import debugRoutes from './routes/debug.js';
 import homeRoutes from './routes/home.js';
+import quizzesRoutes from './routes/quizzes.js';
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -21,6 +22,7 @@ export async function buildApp() {
   await app.register(dashboardRoutes);
   await app.register(debugRoutes);
   await app.register(homeRoutes);
+  await app.register(quizzesRoutes);
 
   app.get('/health', async () => ({ status: 'ok' }));
 
