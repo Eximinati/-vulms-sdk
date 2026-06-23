@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwtPlugin from './plugins/jwt.js';
 import authPlugin from './plugins/auth.js';
+import activitiesRoutes from './routes/activities.js';
 import authRoutes from './routes/auth.js';
 import assignmentsRoutes from './routes/assignments.js';
 import coursesRoutes from './routes/courses.js';
@@ -17,6 +18,7 @@ export async function buildApp() {
   await app.register(cors);
   await app.register(jwtPlugin);
   await app.register(authPlugin);
+  await app.register(activitiesRoutes);
   await app.register(authRoutes);
   await app.register(assignmentsRoutes);
   await app.register(coursesRoutes);
