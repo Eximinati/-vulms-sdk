@@ -7,6 +7,7 @@ import assignmentsRoutes from './routes/assignments.js';
 import coursesRoutes from './routes/courses.js';
 import dashboardRoutes from './routes/dashboard.js';
 import debugRoutes from './routes/debug.js';
+import gdbsRoutes from './routes/gdbs.js';
 import homeRoutes from './routes/home.js';
 import quizzesRoutes from './routes/quizzes.js';
 
@@ -21,6 +22,7 @@ export async function buildApp() {
   await app.register(coursesRoutes);
   await app.register(dashboardRoutes);
   await app.register(debugRoutes);
+  await app.register(gdbsRoutes);
   await app.register(homeRoutes);
   await app.register(quizzesRoutes);
 
