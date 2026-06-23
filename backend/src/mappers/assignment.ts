@@ -7,7 +7,7 @@ export function toAssignmentDto(a: Assignment): AssignmentDto {
     courseTitle: a.courseTitle,
     title: a.title,
     lesson: a.lesson,
-    dueDate: a.dueDate?.toISOString(),
+    dueDate: a.dueDate instanceof Date ? a.dueDate.toISOString() : typeof a.dueDate === 'string' ? a.dueDate : undefined,
     status: a.status,
     totalMarks: a.totalMarks,
     obtainedMarks: a.obtainedMarks,

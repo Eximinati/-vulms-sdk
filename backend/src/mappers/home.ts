@@ -22,13 +22,19 @@ export function toHomeDashboardDto(d: {
   };
 }
 
+function toMs(date: Date | string | undefined): number {
+  if (!date) return 0;
+  if (date instanceof Date) return date.getTime();
+  return new Date(date).getTime() || 0;
+}
+
 export function toHomeAssignmentDto(a: Assignment): AssignmentDto {
   return {
     courseCode: a.courseCode,
     courseTitle: a.courseTitle,
     title: a.title,
     lesson: a.lesson,
-    dueDate: a.dueDate?.toISOString(),
+    dueDate: a.dueDate instanceof Date ? a.dueDate.toISOString() : typeof a.dueDate === 'string' ? a.dueDate : undefined,
     status: a.status,
     totalMarks: a.totalMarks,
     obtainedMarks: a.obtainedMarks,
@@ -37,10 +43,6 @@ export function toHomeAssignmentDto(a: Assignment): AssignmentDto {
 
 export function getRecentAssignments(assignments: Assignment[], limit = 5): Assignment[] {
   return [...assignments]
-    .sort((a, b) => {
-      const da = a.dueDate?.getTime() ?? 0;
-      const db = b.dueDate?.getTime() ?? 0;
-      return db - da;
-    })
+    .sort((a, b) => toMs(b.dueDate) - toMs(a.dueDate))
     .slice(0, limit);
 }

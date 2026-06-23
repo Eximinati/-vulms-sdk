@@ -13,10 +13,17 @@ export async function getAuthenticatedSdk(studentId: string): Promise<Authentica
     throw new SessionMissingError(studentId);
   }
 
+  const t0 = Date.now();
   const sdk = new VulmsSDK();
   await sdk.importSession(stored.exportedSession);
+  const t1 = Date.now();
+  console.log(`[PERF] importSession: ${t1 - t0}ms`);
 
+  const v0 = Date.now();
   const validation = await sdk.validateImportedSession();
+  const v1 = Date.now();
+  console.log(`[PERF] validateSession: ${v1 - v0}ms`);
+
   if (!validation.valid) {
     throw new SessionInvalidError(studentId, validation.reason);
   }
