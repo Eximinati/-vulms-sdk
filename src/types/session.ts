@@ -19,3 +19,16 @@ export interface LoginResult {
   success: boolean;
   error?: string;
 }
+
+export interface ExportedSession {
+  username?: string;
+  cookies: string;
+  createdAt: number;
+  exportedAt: number;
+  sdkVersion: string;
+}
+
+export interface SessionValidationResult {
+  valid: boolean;
+  reason?: string;
+}

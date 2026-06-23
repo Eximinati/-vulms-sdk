@@ -154,6 +154,22 @@ export class SessionManager {
     }
   }
 
+  async importCookies(cookies: string, username?: string): Promise<void> {
+    await this.httpClient.setCookies(cookies);
+    this.state = {
+      cookies,
+      isValid: true,
+      username,
+    };
+  }
+
+  clearSession(): void {
+    this.state = {
+      cookies: '',
+      isValid: false,
+    };
+  }
+
   getState(): SessionState {
     return { ...this.state };
   }

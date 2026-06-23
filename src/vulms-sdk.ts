@@ -8,7 +8,8 @@ import { GDBModule } from './modules/gdb';
 import { LectureModule } from './modules/lectures';
 import { ActivityModule } from './modules/activities';
 import { DashboardModule } from './modules/dashboard';
-import type { LoginResult } from './types/session';
+import { AuthenticationError } from './core/errors';
+import type { LoginResult, ExportedSession, SessionValidationResult } from './types/session';
 import type { Course } from './types/course';
 import { DebugLogger } from './utils/logger';
 import { mergeConfig, type SDKConfig, type RequiredSDKConfig } from './config';
@@ -194,5 +195,61 @@ export class VulmsSDK {
 
   clearTraces(): void {
     this.client.clearTraces();
+  }
+
+  exportSession(): ExportedSession {
+    if (!this.runtime.loggedIn || !this.session.isAuthenticated()) {
+      throw new AuthenticationError('Cannot export session: not authenticated. Call login() first.');
+    }
+
+    return {
+      username: this.runtime.username,
+      cookies: this.runtime.cookies || '',
+      createdAt: this.runtime.createdAt,
+      exportedAt: Date.now(),
+      sdkVersion: '0.1.0-beta.2',
+    };
+  }
+
+  async importSession(session: ExportedSession): Promise<void> {
+    await this.session.importCookies(session.cookies, session.username);
+
+    this.runtime.loggedIn = true;
+    this.runtime.username = session.username;
+    this.runtime.cookies = session.cookies;
+
+    this.debug.info('[SDK] Session imported successfully');
+  }
+
+  clearSession(): void {
+    this.session.clearSession();
+
+    this.runtime.loggedIn = false;
+    this.runtime.username = undefined;
+    this.runtime.cookies = undefined;
+    this.runtime.dashboardHtml = undefined;
+    this.runtime.dashboardCachedAt = undefined;
+    this.runtime.dashboardIndicators = undefined;
+    this.runtime.courses = undefined;
+    this.runtime.coursesCachedAt = undefined;
+    invalidateCache(this.runtime);
+    this.client.clearTraces();
+
+    this.debug.info('[SDK] Session cleared');
+  }
+
+  async validateImportedSession(): Promise<SessionValidationResult> {
+    try {
+      const valid = await this.session.validateSession();
+      if (valid) {
+        return { valid: true };
+      }
+      return { valid: false, reason: 'Session expired or invalid. VULMS returned login page.' };
+    } catch (error) {
+      if (error instanceof Error) {
+        return { valid: false, reason: error.message };
+      }
+      return { valid: false, reason: 'Unexpected error during validation' };
+    }
   }
 }

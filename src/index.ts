@@ -32,6 +32,8 @@ export type {
   ActivityStatus,
   SessionState,
   LoginResult,
+  ExportedSession,
+  SessionValidationResult,
 } from './types';
 
 export {
