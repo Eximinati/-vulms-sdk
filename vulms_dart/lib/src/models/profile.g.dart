@@ -1,0 +1,29 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'profile.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+_Profile _$ProfileFromJson(Map<String, dynamic> json) => _Profile(
+  studentId: json['studentId'] as String?,
+  name: json['name'] as String?,
+  email: json['email'] as String?,
+  program: json['program'] as String?,
+  session: json['session'] as String?,
+  imageUrl: json['imageUrl'] as String?,
+  additionalFields: (json['additionalFields'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, e as String),
+  ),
+);
+
+Map<String, dynamic> _$ProfileToJson(_Profile instance) => <String, dynamic>{
+  'studentId': instance.studentId,
+  'name': instance.name,
+  'email': instance.email,
+  'program': instance.program,
+  'session': instance.session,
+  'imageUrl': instance.imageUrl,
+  'additionalFields': instance.additionalFields,
+};
