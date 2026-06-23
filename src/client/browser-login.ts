@@ -32,9 +32,12 @@ export async function loginWithBrowser(
   const { timeout = 60000, headless = true } = options;
 
   let browser: Browser | null = null;
+  const t0 = Date.now();
 
   try {
+    const tLaunch = Date.now();
     browser = await chromium.launch({ headless });
+    console.log(`[LOGIN-PERF] browserLaunch: ${Date.now() - tLaunch}ms`);
 
     const context = await browser.newContext({
       userAgent:
@@ -53,30 +56,33 @@ export async function loginWithBrowser(
       await route.fulfill({ response });
     });
 
-    await page.goto(`${VULMS_BASE_URL}/`, { timeout, waitUntil: 'networkidle' });
+    const tPageLoad = Date.now();
+    await page.goto(`${VULMS_BASE_URL}/`, { timeout, waitUntil: 'load' });
+    console.log(`[LOGIN-PERF] pageLoad: ${Date.now() - tPageLoad}ms`);
 
     await page.waitForSelector('#txtStudentID', { timeout: 15000 });
 
+    const tFill = Date.now();
     await page.fill('#txtStudentID', studentId);
     await page.fill('#txtPassword', password);
+    console.log(`[LOGIN-PERF] credentialFill: ${Date.now() - tFill}ms`);
 
-    await page.waitForTimeout(1000);
-
+    const tSubmit = Date.now();
     await page.click('#ibtnLogin');
+    await page.waitForLoadState('load', { timeout });
+    console.log(`[LOGIN-PERF] submitLogin: ${Date.now() - tSubmit}ms`);
 
-    await page.waitForLoadState('networkidle', { timeout });
-
+    const tDetect = Date.now();
     const html = await page.content();
-
     const hasLoginForm = html.includes('txtStudentID');
     const hasIncorrect = html.includes('Incorrect');
+    console.log(`[LOGIN-PERF] loginSuccessDetection: ${Date.now() - tDetect}ms`);
 
     if (hasLoginForm || hasIncorrect) {
       return { success: false, error: 'Invalid credentials' };
     }
 
-    await page.waitForTimeout(2000);
-
+    const tDiscovery = Date.now();
     const courseCards = await page.$$('.m-portlet');
     for (let i = 0; i < courseCards.length; i++) {
       const h3 = await courseCards[i].$('h3');
@@ -88,19 +94,26 @@ export async function loginWithBrowser(
         }
       }
     }
+    console.log(`[LOGIN-PERF] courseDiscovery: ${Date.now() - tDiscovery}ms (${courseMap.size} courses)`);
 
+    const tQuiz = Date.now();
     for (const [url, code] of courseMap) {
       try {
-        await page.goto(url, { timeout: 30000, waitUntil: 'networkidle' });
+        await page.goto(url, { timeout: 30000, waitUntil: 'load' });
         const quizHtml = await page.content();
         if (quizHtml.includes('Quiz') || quizHtml.includes('quiz')) {
           quizPages.push({ courseCode: code, html: quizHtml });
         }
       } catch { /* skip failed course pages */ }
     }
+    console.log(`[LOGIN-PERF] quizTraversal: ${Date.now() - tQuiz}ms (${courseMap.size} pages)`);
 
+    const tCookies = Date.now();
     const cookies = await context.cookies([VULMS_BASE_URL]);
     const cookieStr = cookiesToString(cookies);
+    console.log(`[LOGIN-PERF] cookieExtraction: ${Date.now() - tCookies}ms`);
+
+    console.log(`[LOGIN-PERF] totalLogin: ${Date.now() - t0}ms`);
 
     return { success: true, cookies: cookieStr, quizPages };
   } catch (error) {

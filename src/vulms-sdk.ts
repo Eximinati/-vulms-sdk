@@ -113,12 +113,17 @@ export class VulmsSDK {
       return { success: true };
     }
 
+    const t0 = Date.now();
     const result = await this.session.loginWithBrowser(username, password);
+    console.log(`[LOGIN-PERF] sessionLoginWithBrowser: ${Date.now() - t0}ms`);
 
     if (result.success) {
+      const t1 = Date.now();
       await this.postLoginSetup(username);
+      console.log(`[LOGIN-PERF] postLoginSetup: ${Date.now() - t1}ms`);
     }
 
+    console.log(`[LOGIN-PERF] sdkLoginTotal: ${Date.now() - t0}ms`);
     return result;
   }
 
@@ -128,7 +133,10 @@ export class VulmsSDK {
     this.runtime.cookies = await this.client.getCookies();
 
     this.debug.info('[SDK] Post-login: caching dashboard');
+    const tHome = Date.now();
     const homeHtml = await this.client.get({ path: VULMS_ENDPOINTS.HOME });
+    console.log(`[LOGIN-PERF] postLoginFetchHome: ${Date.now() - tHome}ms`);
+
     this.runtime.dashboardIndicators = extractDashboardIndicators(homeHtml);
     this.debug.info(`[SDK] Dashboard indicators: assignments=${this.runtime.dashboardIndicators.assignments.size} quizzes=${this.runtime.dashboardIndicators.quizzes.size} gdbs=${this.runtime.dashboardIndicators.gdbs.size} lectures=${this.runtime.dashboardIndicators.lectures.size}`);
 

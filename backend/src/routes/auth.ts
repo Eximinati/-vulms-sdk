@@ -16,8 +16,10 @@ export default async function authRoutes(app: FastifyInstance) {
 
     const { studentId, password } = parsed.data;
 
+    const t0 = Date.now();
     const sdk = new VulmsSDK();
     const result = await sdk.loginWithBrowser(studentId, password);
+    console.log(`[LOGIN-PERF] sdkLoginWithBrowser (backend): ${Date.now() - t0}ms`);
 
     if (!result.success) {
       return reply.code(401).send({
@@ -26,7 +28,9 @@ export default async function authRoutes(app: FastifyInstance) {
       });
     }
 
+    const tExport = Date.now();
     const exportedSession = sdk.exportSession();
+    console.log(`[LOGIN-PERF] exportSession: ${Date.now() - tExport}ms`);
 
     const stored: StoredUserSession = {
       studentId,
@@ -37,6 +41,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
     const token = app.jwt.sign({ sub: studentId });
 
+    console.log(`[LOGIN-PERF] backendLoginTotal: ${Date.now() - t0}ms`);
     return reply.code(200).send({
       success: true,
       token,
